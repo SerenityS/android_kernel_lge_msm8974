@@ -290,11 +290,13 @@ int msm_ipc_check_send_permissions(void *data)
 			return 1;
 	}
         
-#ifdef CONFIG_AOSP
 	if (in_egroup_p(3009)) // AID_QCOM_ONCRPC
 		return 1;
-#endif
+
+	if (in_egroup_p(3011)) // AID_SENSORS
+		return 1;
 	return 0;
+
 }
 EXPORT_SYMBOL(msm_ipc_check_send_permissions);
 
