@@ -48,7 +48,7 @@ struct pm8xxx_cradle {
 static struct workqueue_struct *cradle_wq;
 static struct pm8xxx_cradle *cradle;
 
-#if defined(CONFIG_MACH_MSM8974_B1_KR)
+#if defined(CONFIG_TOUCHSCREEN_ATMEL_S540)
 static int is_smart_cover_closed = 0; /* check status of smart cover to resize quick window area */
 int cradle_smart_cover_status(void)
 {
@@ -135,7 +135,7 @@ static void boot_cradle_det_func(void)
 	switch_set_state(&cradle->sdev, cradle->state);
 #endif
 
-#if defined(CONFIG_MACH_MSM8974_B1_KR)
+#if defined(CONFIG_TOUCHSCREEN_ATMEL_S540)
 	is_smart_cover_closed = cradle->pouch;
 #endif
         input_report_switch(cradle_input, SW_LID, 
@@ -304,7 +304,7 @@ static irqreturn_t pm8xxx_pouch_irq_handler(int irq, void *handle)
 {
 	struct pm8xxx_cradle *cradle_handle = handle;
 	int v;
-#if defined(CONFIG_MACH_MSM8974_B1_KR)
+#if defined(CONFIG_TOUCHSCREEN_ATMEL_S540)
 	int status;
 
 	status = !gpio_get_value(cradle->pdata->hallic_pouch_detect_pin);

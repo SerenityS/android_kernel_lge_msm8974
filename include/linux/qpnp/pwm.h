@@ -124,7 +124,7 @@ struct pwm_duty_cycles {
 	int *duty_pcts30;
 	int *duty_pcts31;
 	int *duty_pcts32;
-#if defined(CONFIG_MACH_MSM8974_B1_KR)
+#if defined(CONFIG_MACH_MSM8974_B1_KR) || defined(CONFIG_MACH_MSM8974_B1W)
 	int *duty_pcts37;
 #endif
 	int *duty_pcts101;
