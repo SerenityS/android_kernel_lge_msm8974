@@ -22,7 +22,6 @@
 #include <linux/module.h>
 #include <mach/board_lge.h>
 
-#if defined(CONFIG_LCD_KCAL)
 /*             
                           
                                 
@@ -125,7 +124,6 @@ int __init kcal_ctrl_init(void)
 }
 
 device_initcall(kcal_ctrl_init);
-#endif
 
 MODULE_DESCRIPTION("LGE KCAL driver");
 MODULE_LICENSE("GPL v2");

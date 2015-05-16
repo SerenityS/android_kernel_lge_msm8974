@@ -1,7 +1,7 @@
-#guilbert.lee@lge.com Mon 28 Jan 2013
-#lg dts viewer
+#                                    
+#             
 
-#!/bin/sh
+#        
 
 DTS_PATH=$1
 WORK_PATH=${0%/*}
@@ -31,6 +31,6 @@ if [ ! -d "$OUT_PATH" ] ; then
 fi
 
 ${WORK_PATH}/lg_dtc -o $OUT_PATH/$DTS_NAME\
- -I dts -O dts -H specific -s ./$DTS_PATH
+ -D -I dts -O dts -H specific -s ./$DTS_PATH
 ${WORK_PATH}/lg_dtc -o $OUT_PATH/$DTS_NAME.2\
- -I dts -O dts -H specific2 -s ./$DTS_PATH
+ -D -I dts -O dts -H specific2 -s ./$DTS_PATH

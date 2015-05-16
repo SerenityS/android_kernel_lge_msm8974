@@ -16,7 +16,7 @@
 #include <linux/fcntl.h>
 #include <linux/file.h>
 #include <mach/camera2.h>
-#include <linux/poll.h> 
+#include <linux/poll.h>
 #include "msm_ois.h"
 #include "msm_ois_i2c.h"
 
@@ -45,10 +45,10 @@
 
 static int16_t g_gyro_offset_value_x, g_gyro_offset_value_y = 0;
 
-static struct ois_i2c_bin_list LGIT_VER14_REL_BIN_DATA = 
+static struct ois_i2c_bin_list LGIT_VER14_REL_BIN_DATA =
 {
 	.files = 3,
-	.entries = 
+	.entries =
 	{
 		{
 			.filename = FIRMWARE_VER_BIN_1,
@@ -87,11 +87,11 @@ static int lgit2_ois_poll_ready(int limit)
 	read_byte++;
 
 	while((ois_status != 0x01) && (read_byte < limit)) {
-		RegReadA(OIS_READ_STATUS_ADDR, &ois_status); //polling status ready		
+		RegReadA(OIS_READ_STATUS_ADDR, &ois_status); //polling status ready
 		usleep(1000); //wait 1ms
 		read_byte++;
 	}
-	
+
 	return ois_status;
 }
 
@@ -99,8 +99,8 @@ int lgit2_bin_download(struct ois_i2c_bin_list bin_list)
 {
 	int rc = 0;
 	int cnt = 0;
-	int32_t read_value_32t; 
-	
+	int32_t read_value_32t;
+
 	CDBG("%s\n", __func__);
 
 	/* check OIS ic is alive */
@@ -112,13 +112,13 @@ int lgit2_bin_download(struct ois_i2c_bin_list bin_list)
 
 	/* Send command ois start dl */
 	rc = RegWriteA(OIS_START_DL_ADDR, 0x00);
-	
+
 	while (rc < 0 && cnt < LIMIT_STATUS_POLLING) {
 		usleep(2000);
 		rc = RegWriteA(OIS_START_DL_ADDR, 0x00);
 		cnt ++;
 	}
-	
+
 	if (rc < 0) {
 		printk("%s: no reply \n",__func__);
 		rc = OIS_INIT_I2C_ERROR;
@@ -157,7 +157,7 @@ int lgit2_bin_download(struct ois_i2c_bin_list bin_list)
 			rc = OIS_INIT_TIMEOUT;
 			goto END;
 	}
-	
+
 	printk("%s, complete dl FINISHED! \n",__func__);
 
 END:
@@ -167,17 +167,17 @@ END:
 int lgit2_ois_init_cmd(int limit)
 {
 	int trial = 0;
-	
+
 	do{
 		RegWriteA(0x6020, 0x01);
 		trial++;
 	} while(trial<limit && !lgit2_ois_poll_ready(LIMIT_STATUS_POLLING));
 
 	if (trial == limit) { return OIS_INIT_TIMEOUT; }
-	
+
 	RegWriteA(0x6023, 0x04);// gyro on
 	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) { return OIS_INIT_TIMEOUT; }
-	
+
 	return OIS_SUCCESS;
 }
 
@@ -190,23 +190,23 @@ int lgit2_ois_mode(enum ois_mode_t data)
 
 	if (cur_mode == data)
 		return OIS_SUCCESS;
-	
+
 	if (cur_mode != OIS_MODE_CENTERING_ONLY) {
 		RegWriteA(0x6020, 0x01);
 		if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) { return OIS_INIT_TIMEOUT; }
 	}
-	
+
 	switch (data) {
 	case OIS_MODE_PREVIEW_CAPTURE:
-	case OIS_MODE_CAPTURE: 
+	case OIS_MODE_CAPTURE:
 		CDBG("%s:%d, %d preview capture \n", __func__,data, cur_mode);
 		RegWriteA(0x6021, 0x10); // zero shutter mode 2
 		RegWriteA(0x6020, 0x02);
 		break;
-	case OIS_MODE_VIDEO: 	
+	case OIS_MODE_VIDEO:
 		CDBG("%s:%d, %d capture \n", __func__,data, cur_mode);
-		RegWriteA(0x6021, 0x11); 
-		RegWriteA(0x6020, 0x02); 
+		RegWriteA(0x6021, 0x11);
+		RegWriteA(0x6020, 0x02);
 		break;
 	case OIS_MODE_CENTERING_ONLY:
 		CDBG("%s:%d, %d centering_only \n", __func__,data, cur_mode);
@@ -219,75 +219,75 @@ int lgit2_ois_mode(enum ois_mode_t data)
 	}
 
 	lgit2_ois_func_tbl.ois_cur_mode = data;
-	
+
 	return OIS_SUCCESS;
 }
 
 int lgit_ois_calibration(int ver)
 {
 	int16_t gyro_offset_value_x, gyro_offset_value_y = 0;
-	
+
 	CDBG("%s: lgit_ois_calibration start \n", __func__);
 	//Gyro Zero Calibration Starts.
 	RegWriteA(0x6020,0x01);//update mode & servo on & ois off mode
-	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) {		
-		CDBG("%s 0x6024 result fail 1 @01\n", __func__);		
+	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) {
+		printk("%s 0x6024 result fail 1 @01\n", __func__);
 		return OIS_INIT_TIMEOUT;
 	}
 	//Gyro On
 	RegWriteA(0x6023,0x00);
-	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) {		
-		CDBG("%s 0x6024 result fail 3 @02\n", __func__);		
+	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) {
+		printk("%s 0x6024 result fail 3 @02\n", __func__);
 		return OIS_INIT_TIMEOUT;
 	}
 	//X
 	RegWriteA(0x6088,0);
 	//usleep(50000);
-	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING + 30)) {		
-		CDBG("%s 0x6024 result fail 3 @03\n", __func__);		
+	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING + 30)) {
+		printk("%s 0x6024 result fail 3 @03\n", __func__);
 		return OIS_INIT_TIMEOUT;
 	}
 	RegReadB(0x608A, &gyro_offset_value_x);
-	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) {		
-		CDBG("%s 0x6024 result fail 3 @04\n", __func__);		
+	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) {
+		printk("%s 0x6024 result fail 3 @04\n", __func__);
 		return OIS_INIT_TIMEOUT;
 	}
 	//Y
 	RegWriteA(0x6088,1);
 	//usleep(50000);
-	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING + 30)) {		
-		CDBG("%s 0x6024 result fail 3 @05\n", __func__);		
+	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING + 30)) {
+		CDBG("%s 0x6024 result fail 3 @05\n", __func__);
 		return OIS_INIT_TIMEOUT;
 	}
 	RegReadB(0x608A, &gyro_offset_value_y);
-	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) {		
-		CDBG("%s 0x6024 result fail 3 @06A\n", __func__);		
+	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING)) {
+		printk("%s 0x6024 result fail 3 @06A\n", __func__);
 		return OIS_INIT_TIMEOUT;
 	}
-	
+
 	//Cal. Dato to eeprom
-	ois_i2c_e2p_write(0x0908, (uint16_t)(0xFFFF & gyro_offset_value_x), 2); 
+	ois_i2c_e2p_write(0x0908, (uint16_t)(0xFFFF & gyro_offset_value_x), 2);
 	ois_i2c_e2p_write(0x090A, (uint16_t)(0xFFFF & gyro_offset_value_y), 2); //gyro_offset_value_x -> gyro_offset_value_y로 수정함.(김형관)
-	
+
 	//Cal. Data to OIS Driver
 	RegWriteA(0x609C, 0x00);
 	RamWriteA(0x609D, gyro_offset_value_x); //16
 	RegWriteA(0x609C, 0x01);
 	RamWriteA(0x609D, gyro_offset_value_y); //16
-	
+
 	//	Gyro Zero Calibration Ends.
 	CDBG("%s gyro_offset_value_x %d gyro_offset_value_y %d \n", __func__, gyro_offset_value_x, gyro_offset_value_y);
 	g_gyro_offset_value_x = gyro_offset_value_x;
 	g_gyro_offset_value_y = gyro_offset_value_y;
 
 	CDBG("%s: lgit_ois_calibration end\n", __func__);
-	return OIS_SUCCESS;	
-}	
+	return OIS_SUCCESS;
+}
 int32_t	lgit2_ois_on ( enum ois_ver_t ver  )
 {
 	int32_t rc = OIS_SUCCESS;
 	uint16_t cal_ver = 0;
-	
+
 	printk("%s, %s\n", __func__,LAST_UPDATE);
 
 	ois_i2c_e2p_read(E2P_FIRST_ADDR+0x1C, &cal_ver, 2);
@@ -303,10 +303,10 @@ int32_t	lgit2_ois_on ( enum ois_ver_t ver  )
 	}
 
 	if (rc < 0)	{
-		CDBG("%s: init fail \n", __func__);
+		printk("%s: init fail \n", __func__);
 		return rc;
 	}
-		
+
 	switch (ver) {
 	case OIS_VER_RELEASE:
 		lgit2_ois_init_cmd(LIMIT_OIS_ON_RETRY);
@@ -317,7 +317,7 @@ int32_t	lgit2_ois_on ( enum ois_ver_t ver  )
 
 		if (!lgit2_ois_poll_ready(5))
 			return OIS_INIT_TIMEOUT;
-			
+
 		break;
 	case OIS_VER_CALIBRATION:
 	case OIS_VER_DEBUG:
@@ -329,26 +329,26 @@ int32_t	lgit2_ois_on ( enum ois_ver_t ver  )
 
 		if (!lgit2_ois_poll_ready(5))
 			return OIS_INIT_TIMEOUT;
-		
+
 		break;
 	}
-	
+
 	lgit2_ois_func_tbl.ois_cur_mode = OIS_MODE_CENTERING_ONLY;
-	
-	CDBG("%s : complete!\n", __func__);	
+
+	CDBG("%s : complete!\n", __func__);
 	return rc;
 }
 
 int32_t	lgit2_ois_off(void)
-{	
+{
 	printk("%s enter\n", __func__);
-	
+
 	RegWriteA(0x6020, 0x01);
-	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING))  {		
-		CDBG("%s poll time out\n", __func__);
+	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING))  {
+		printk("%s poll time out\n", __func__);
 		return OIS_INIT_TIMEOUT;
 	}
-	
+
 	printk("%s exit\n", __func__);
 	return OIS_SUCCESS;
 }
@@ -371,37 +371,37 @@ int lgit2_ois_stat(struct msm_sensor_ois_info_t *ois_stat)
 
 	//Gyro Read by reg
 	RegWriteA(0x609C, 0x02);
-	RamReadA(0x609D, &val_gyro_x); 
+	RamReadA(0x609D, &val_gyro_x);
 	RegWriteA(0x609C, 0x03);
-	RamReadA(0x609D, &val_gyro_y); 
-	
+	RamReadA(0x609D, &val_gyro_y);
+
 	ois_stat->gyro[0] = (int16_t)val_gyro_x;
 	ois_stat->gyro[1] = (int16_t)val_gyro_y;
-	
+
 	//Hall Fail
 	//Read Hall X
 	RegWriteA(0x6060, 0x00);
-	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING + 30)) {		
-		CDBG("%s 0x6024 result fail 3 @09\n", __func__);		
+	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING + 30)) {
+		printk("%s 0x6024 result fail 3 @09\n", __func__);
 		return OIS_INIT_TIMEOUT;
 	}
 	RegReadB(0x6062, &val_hall_x);
-	
+
 	//Read Hall Y
 	RegWriteA(0x6060, 0x01);
-	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING + 30)) {		
-		CDBG("%s 0x6024 result fail 3 @10\n", __func__);		
+	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING + 30)) {
+		printk("%s 0x6024 result fail 3 @10\n", __func__);
 		return OIS_INIT_TIMEOUT;
 	}
-	
+
 	RegReadB(0x6062, &val_hall_y);
-	
+
 	ois_stat->hall[0] = val_hall_x;
 	ois_stat->hall[1] = val_hall_y;
-		
+
 	ois_stat->is_stable = 1;
 
-#if 0	
+#if 0
 	CDBG("%s val_hall_x(%d) -> 0x%x g_gyro_offset_value_x (%d)\n", __func__,
 		val_hall_x, ois_stat->gyro[0], g_gyro_offset_value_x );
 	CDBG("%s val_hall_y(%d) -> 0x%x g_gyro_offset_value_y (%d)\n", __func__,
@@ -410,21 +410,21 @@ int lgit2_ois_stat(struct msm_sensor_ois_info_t *ois_stat)
 
 	if (abs(val_gyro_x) > (25 * 262) ||
 		abs(val_gyro_y) > (25 * 262)) {
-		CDBG("Gyro Offset X is FAIL!!! (%d) \n", val_gyro_x);
-		CDBG("Gyro Offset Y is FAIL!!! (%d) \n", val_gyro_y);
+		printk("Gyro Offset X is FAIL!!! (%d) \n", val_gyro_x);
+		printk("Gyro Offset Y is FAIL!!! (%d) \n", val_gyro_y);
 		ois_stat->is_stable = 0;
 	}
-	
+
 	//Hall Spec. Out?
 	if(val_hall_x > spec_hall_x_upper || val_hall_x < spec_hall_x_lower) {
-		CDBG("val_hall_x is FAIL!!! (%d) 0x%x\n", val_hall_x,
-			val_hall_x);		
+		printk("val_hall_x is FAIL!!! (%d) 0x%x\n", val_hall_x,
+			val_hall_x);
 		ois_stat->is_stable = 0;
 	}
-	
+
 	if(val_hall_y > spec_hall_y_upper || val_hall_y < spec_hall_y_lower) {
-		CDBG("val_hall_y is FAIL!!! (%d) 0x%x\n", val_hall_y,
-			val_hall_y);		
+		printk("val_hall_y is FAIL!!! (%d) 0x%x\n", val_hall_y,
+			val_hall_y);
 		ois_stat->is_stable = 0;
 	}
 	ois_stat->target[0] = 0; /* not supported */
@@ -456,19 +456,19 @@ int32_t lgit2_ois_move_lens(int16_t target_x, int16_t target_y)
 	/* wait 100ms */
 	usleep(100000);
 	RegWriteA(0x6098, 0x01); /* order to move. */
-		
+
 	if (!lgit2_ois_poll_ready(LIMIT_STATUS_POLLING * 12))
 		return OIS_INIT_TIMEOUT;
 
 	RegReadA(0x609B, &result);
-	
+
 	RegWriteA(0x6023, 0x00);//Gyro On
 	RegWriteA(0x6021, 0x12);//LGIT STILL & PAN ON MODE
 	RegWriteA(0x6020, 0x02);//OIS ON
-	
+
 	if (result == 0x03)
 		return  OIS_SUCCESS;
-		
+
 	printk("%s move fail : 0x%x \n", __func__, result);
 	return OIS_FAIL;
 }

@@ -20,7 +20,7 @@
 #define MXT_PATCH_MAX_TLINE			255
 #define MXT_PATCH_MAX_TRIG			255
 #define MXT_PATCH_MAX_ITEM			255
-#define MXT_PATCH_MAX_TYPE			255
+#define MXT_PATCH_MAX_TYPE			128
 #define MXT_PATCH_MAX_CON			255
 #define MXT_PATCH_MAX_EVENT			255
 #define MXT_PATCH_MAX_MSG_SIZE		10
@@ -1460,8 +1460,10 @@ static int mxt_patch_test_trigger(struct mxt_data *data,
 	u8	tmsg[MXT_PATCH_MAX_MSG_SIZE];
 
 	if(!ppatch || !ptrigger_addr){
+		/* Too many logs in FTM mode
 		dev_err(&data->client->dev, "%s ptrigger_addr is null\n",
 			__func__);
+			*/
 		return 1;
 	}
 	memset(tmsg, 0, MXT_PATCH_MAX_MSG_SIZE);
@@ -1491,6 +1493,13 @@ int mxt_patch_test_event(struct mxt_data *data,
 		mxt_patch_parse_event(data, ppatch+pevent_addr[event_id],
 			true);
 	}
+#ifdef MXT_FACTORY
+	/* disable patch after writing config of FTM mode */
+	if(data->ta_status == MXT_PATCH_FTM_BAT_MODE_EVENT || data->ta_status == MXT_PATCH_FTM_TA_MODE_EVENT){
+		data->patch.start = false;
+		data->patch.patch = NULL;
+	}
+#endif
 	return 0;
 }
 

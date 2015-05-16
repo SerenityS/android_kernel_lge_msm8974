@@ -1,5 +1,5 @@
 #ifndef OIS_I2C_COMMON_H
-#define OIS_I2C_COMMON_H   
+#define OIS_I2C_COMMON_H
 
 #include <linux/i2c.h>
 

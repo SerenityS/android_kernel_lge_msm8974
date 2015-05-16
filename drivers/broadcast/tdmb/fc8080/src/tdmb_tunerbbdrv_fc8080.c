@@ -63,6 +63,11 @@
 /* change memcpy mscBuffer -> msc_data -> buffer  to mscBuffer->buffer */
 #define NOT_MSCDATA_MULTIPLE_MEMCPY
 
+/*                                                          */
+#define START_SYNC_CNT 3
+#define MAX_ANT_BUFF_CNT 2
+/*                                                          */
+
 uint32 	tp_total_cnt=0;
 
 /* -----------------------------------------------------------------------
@@ -149,6 +154,14 @@ fci_u8 msc_multi_data[188*8*8];
 static uint16 is_tdmb_probe = 0;
 
 //static uint16 data_sequence_count = 0;
+
+/*                                                          */
+static uint32	antBuffIdx = 0;
+static uint16	antBuff[MAX_ANT_BUFF_CNT] = {0, };
+static uint8	calAntLevel = 0;
+static uint8	syncLockCnt = 0;
+/*                                                          */
+
 /*============================================================
 **    8.   Local Function Prototype
 *============================================================*/
@@ -157,6 +170,11 @@ static uint32 tunerbb_drv_fc8080_get_viterbi_ber(void);
 static int8 tunerbb_drv_fc8080_get_sync_status(void);
 //static uint32 tunerbb_drv_fc8080_get_rs_ber(void);
 static int8 tunerbb_drv_fc8080_check_overrun(uint8 op_mode);
+
+/*                                                          */
+static void tunerbb_drv_fc8080_init_antlevel_val(void);
+/*                                                          */
+
 void tunerbb_drv_fc8080_isr_control(fci_u8 onoff);
 #ifdef FEATURE_RSSI_DEBUG
 void tunerbb_drv_fc8080_get_dm(fci_u32 *mscber, fci_u32 *tp_err, fci_u16 *tpcnt, fci_u32 *vaber, fci_s8 *rssi);
@@ -195,6 +213,10 @@ int8 tunerbb_drv_fc8080_re_syncdetector(uint8 op_mode)
 int8 tunerbb_drv_fc8080_set_channel(int32 freq_num, uint8 subch_id, uint8 op_mode)
 {
 	int8 ret_val;
+
+	/*                                                          */
+	tunerbb_drv_fc8080_init_antlevel_val();
+	/*                                                         */
 
 	ret_val = tunerbb_drv_fc8080_multi_set_channel(freq_num, 1, &subch_id, &op_mode);
 
@@ -365,8 +387,15 @@ int8	tunerbb_drv_fc8080_init(void)
 	bbm_com_fic_callback_register((fci_u32)NULL, tunerbb_drv_fc8080_fic_cb);
 	bbm_com_msc_callback_register((fci_u32)NULL, tunerbb_drv_fc8080_msc_cb);
 #endif
-	res = bbm_com_init(NULL);
-	res |= bbm_com_probe(NULL);
+
+	res = bbm_com_probe(NULL);
+
+#ifdef FEATURE_POWER_ON_RETRY
+	if(res)
+		res = tdmb_fc8080_power_on_retry();
+#endif
+
+	res |= bbm_com_init(NULL);
 
 	if(res)
 	{
@@ -530,6 +559,7 @@ int8 tunerbb_drv_fc8080_get_bbinfo(tdmb_status_rsp_type* dmb_bb_info)
 
            These paramters are dependent on Information supplied by Device.
 ---------------------------------------------------------------------------- */
+
 int8	tunerbb_drv_fc8080_get_ber(struct broadcast_tdmb_sig_info *dmb_bb_info)
 {
 	uint8 sync_status;
@@ -540,6 +570,20 @@ int8	tunerbb_drv_fc8080_get_ber(struct broadcast_tdmb_sig_info *dmb_bb_info)
 
 	uint16 nframe = 0;
 
+	/*                                                          */
+	uint8 loop;
+	uint16 antTable[4][2] =
+	{
+		{4,    6000},
+		{3,    8000},
+		{2,    9000},
+		{1,    12000},
+	};
+
+    uint16 avgBER = 0;
+    uint8 refAntLevel = 0;
+	/*                                                          */
+
 	if(is_tdmb_probe == 0)
 	{
 		dmb_bb_info->msc_ber = 20000;
@@ -548,7 +592,6 @@ int8	tunerbb_drv_fc8080_get_ber(struct broadcast_tdmb_sig_info *dmb_bb_info)
 		printk("is_tdmb_probe 0. so msc_ber is 20000, tp_err_cnt = 255. \n");
 		return FC8080_RESULT_SUCCESS;
 	}
-
 
 	tunerbb_drv_fc8080_check_overrun(serviceType[0]);
 
@@ -615,26 +658,55 @@ int8	tunerbb_drv_fc8080_get_ber(struct broadcast_tdmb_sig_info *dmb_bb_info)
 
 	dmb_bb_info->fic_ber = 0;
 
-	if(dmb_bb_info->msc_ber < 6000)
+	/*                                                          */
+	antBuff[antBuffIdx++ %MAX_ANT_BUFF_CNT] = dmb_bb_info->msc_ber;
+
+	for(loop = 0, avgBER = 0; loop < MAX_ANT_BUFF_CNT; loop++)
+		avgBER += antBuff[loop];
+
+	if(antBuffIdx < MAX_ANT_BUFF_CNT)
+		avgBER = dmb_bb_info->msc_ber;
+	else
+		avgBER /= MAX_ANT_BUFF_CNT;
+
+	for(loop = 0; loop < 4; loop++)
 	{
-		dmb_bb_info->antenna_level = 4;
+		if(avgBER >= antTable[3][1])
+		{
+			refAntLevel = 0;
+			break;
+		}
+		if(avgBER < antTable[loop][1])
+		{
+			refAntLevel = antTable[loop][0];
+			break;
+		}
 	}
-	else if(dmb_bb_info->msc_ber >= 6000 && dmb_bb_info->msc_ber < 8000)
+
+	if(!(dmb_bb_info->sync_lock))
 	{
-		dmb_bb_info->antenna_level = 3;
+		syncLockCnt = 0;
+		refAntLevel = 0;
 	}
-	else if(dmb_bb_info->msc_ber >= 8000 && dmb_bb_info->msc_ber < 9000)
+	else
 	{
-		dmb_bb_info->antenna_level = 2;
+		if(syncLockCnt != START_SYNC_CNT) // draw after 1.5secs since sync lock
+		{
+			syncLockCnt++;
+			refAntLevel = 0;
+		}
 	}
-	else if(dmb_bb_info->msc_ber >= 9000 && dmb_bb_info->msc_ber < 12000)
-	{
-		dmb_bb_info->antenna_level = 1;
-	}
-	else if(dmb_bb_info->msc_ber >= 12000)
-	{
-		dmb_bb_info->antenna_level = 0;
-	}
+
+	if((refAntLevel == 1) && (dmb_bb_info->msc_ber >= antTable[3][1]))
+		refAntLevel = 0;
+
+	if(calAntLevel > refAntLevel)
+		calAntLevel--;
+	else
+		calAntLevel = refAntLevel;
+
+	dmb_bb_info->antenna_level = calAntLevel;
+	/*                                                          */
 
 #if 0
 	//채널은 잡았으나 (sync_status == 0x3f) frame이 들어오지 않는 경우(nframe == 0) - MBN V-Radio
@@ -642,12 +714,6 @@ int8	tunerbb_drv_fc8080_get_ber(struct broadcast_tdmb_sig_info *dmb_bb_info)
 	{
 		//antenna level을 0으로 만듬.
 		dmb_bb_info->antenna_level = 0;
-	}
-
-	//antenna level이 0이면 약전계이므로 5분종료를 위해 dab_ok를 0으로 만듬.
-	if(dmb_bb_info->antenna_level == 0)
-	{
-		dmb_bb_info->dab_ok = 0;
 	}
 #endif
 
@@ -1482,3 +1548,18 @@ void tunerbb_drv_fc8080_isr_control(fci_u8 onoff)
 	else
 		bbm_com_write(0, BBM_MD_INT_EN, 0);
 }
+
+/*                                                              */
+static void tunerbb_drv_fc8080_init_antlevel_val(void)
+{
+	uint8 i = 0;
+
+	for(i = 0; i < MAX_ANT_BUFF_CNT; i++)
+	{
+		antBuff[i] = 0;
+	}
+
+	antBuffIdx = 0;
+	calAntLevel = 0;
+}
+/*                                                              */

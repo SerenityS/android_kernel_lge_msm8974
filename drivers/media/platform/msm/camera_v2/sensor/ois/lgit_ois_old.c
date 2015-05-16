@@ -2453,7 +2453,7 @@ int32_t lgit_ois_move_lens(int16_t target_x, int16_t target_y)
 	||((abs(hally1-hally2) < LENS_MOVE_THRESHOLD*HALL_SCALE_FACTOR) && (oldy != offset_y)))
 	{
 		rc = OIS_FAIL;	
-		CDBG("%s : fail \n",__func__);
+		printk("%s : fail \n",__func__);
 	}
 	else
 	{
