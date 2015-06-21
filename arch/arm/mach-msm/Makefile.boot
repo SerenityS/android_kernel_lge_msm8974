@@ -112,8 +112,14 @@ else ifneq ($(CONFIG_DTS_TARGET),"")
         dtb-$(CONFIG_MACH_MSM8974_G3_GLOBAL_COM)  += msm8974pro-ac-g3-global_com.dtb
         dtb-$(CONFIG_MACH_MSM8974_G3_CA)  += msm8974pro-g3-ca.dtb
         dtb-$(CONFIG_MACH_MSM8974_G3_CA)  += msm8974pro-ac-g3-ca.dtb
-        dtb-$(CONFIG_MACH_MSM8974_G3_LRA)  += msm8974pro-g3-lra.dtb
-        dtb-$(CONFIG_MACH_MSM8974_G3_LRA)  += msm8974pro-ac-g3-lra.dtb
+	dtb-$(CONFIG_MACH_MSM8974_G3_LRA) += msm8974pro-ac-g3-lra.dtb
+        dtb-$(CONFIG_MACH_MSM8974_B1_KR)  += msm8974-b1-kr.dtb
+        dtb-$(CONFIG_MACH_MSM8974_B1_KR)  += msm8974-v2-b1-kr.dtb
+        dtb-$(CONFIG_MACH_MSM8974_B1_KR)  += msm8974-v2-2-b1-kr.dtb
+        dtb-$(CONFIG_MACH_MSM8974_B1W)  += msm8974-b1w.dtb
+        dtb-$(CONFIG_MACH_MSM8974_B1W)  += msm8974-v2-b1w.dtb
+        dtb-$(CONFIG_MACH_MSM8974_B1W)  += msm8974-v2-2-b1w.dtb
+
 endif
 
 # APQ8084
