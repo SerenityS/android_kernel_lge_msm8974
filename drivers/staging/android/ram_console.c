@@ -32,7 +32,6 @@ static size_t bootinfo_size;
                                                                        
   */
 #define USE_RAM_CONSOLE_ECC	false
-
 static void
 ram_console_write(struct console *console, const char *s, unsigned int count)
 {

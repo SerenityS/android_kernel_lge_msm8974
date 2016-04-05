@@ -1,7 +1,7 @@
-#guilbert.lee@lge.com Mon 28 Jan 2013
-#lg dtb parser
+#                                    
+#             
 
-#!/bin/sh
+#        
 
 WORK_PATH=${0%/*}
 dtb_name=""

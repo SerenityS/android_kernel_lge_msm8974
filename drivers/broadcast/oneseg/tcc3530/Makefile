@@ -1,9 +1,9 @@
 #
-# Makefile for the ISDB-Tmm TCC3530 drivers.
+#                                           
 #
 
-# Each configuration option enables a list of files.
-# LGE
+#                                                   
+#    
 
 CFLAGS_KERNEL+=-D_MODEL_F9J_
 

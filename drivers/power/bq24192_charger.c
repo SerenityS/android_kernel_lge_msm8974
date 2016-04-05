@@ -45,10 +45,13 @@
 #endif
 #endif
 #ifdef CONFIG_LGE_CHARGER_TEMP_SCENARIO
+#ifdef CONFIG_LGE_PM_CHARGING_TEMP_SCENARIO_V1_7
+#include <mach/lge_charging_scenario_v1_7.h>
+#else
 #include <mach/lge_charging_scenario.h>
+#endif
 #define MONITOR_BATTEMP_POLLING_PERIOD          (60*HZ)
 #endif
-
 #ifdef CONFIG_LGE_PM
 #include <linux/qpnp/qpnp-temp-alarm.h>
 #endif
@@ -230,10 +233,10 @@ static int wireless_charging;
 #endif
 
 static struct bq24192_chip *the_chip;
-
-struct pseudo_batt_info_type pseudo_batt_info = {
-	.mode = 0,
-};
+extern struct pseudo_batt_info_type pseudo_batt_info;
+//struct pseudo_batt_info_type pseudo_batt_info = {
+//	.mode = 0,
+//};
 
 struct debug_reg {
 	char  *name;
@@ -884,7 +887,6 @@ bq24192_set_bootcompleted(const char *val, struct kernel_param *kp)
 }
 module_param_call(bootcompleted, bq24192_set_bootcompleted,
 	param_get_uint, &bootcompleted, 0644);
-
 #if defined(CONFIG_MACH_MSM8974_B1_KR) || defined(CONFIG_MACH_MSM8974_B1W)
 static void bq24192_batt_remove_insert_cb(int batt_present)
 {
@@ -919,7 +921,6 @@ static void bq24192_batt_remove_insert_cb(int batt_present)
 	}
 }
 #endif
-
 struct current_limit_entry {
 	int input_limit;
 	int chg_limit;
@@ -1001,6 +1002,7 @@ static void bq24192_input_limit_exception_worker(struct work_struct *work)
 }
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_S540)
 extern void trigger_early_baseline_state_machine(int plug_in);
+static int old_state = 0;
 #endif
 static void bq24192_irq_worker(struct work_struct *work)
 {
@@ -1019,7 +1021,11 @@ static void bq24192_irq_worker(struct work_struct *work)
 	if (ret)
 		return;
 #if defined(CONFIG_TOUCHSCREEN_ATMEL_S540)
-	trigger_early_baseline_state_machine(1);
+	usb_present = bq24192_is_charger_present(chip);
+	if(old_state != usb_present){
+		trigger_early_baseline_state_machine(1);
+	}
+	old_state = usb_present;
 #endif
 
 	pr_info("08:0x%02X, 09:0x%02X\n",reg08, reg09);
@@ -1458,7 +1464,7 @@ static int bq24192_get_prop_batt_current_now(struct bq24192_chip *chip)
 		return DEFAULT_CURRENT;
 
 	chip->cn_psy = power_supply_get_by_name("cn");
-	if (!chip->cn_psy) {		
+	if (!chip->cn_psy) {
 		return DEFAULT_CURRENT;
 	} else {
 		chip->cn_psy->get_property(chip->cn_psy,
@@ -1495,7 +1501,6 @@ static int bq24192_get_prop_batt_current_now(struct bq24192_chip *chip)
 		pr_info("charging done!\n");
 		return last_batt_current;
 	}
-
 	if (qpnp_iadc_is_ready()) {
 		pr_err("qpnp_iadc is not ready!\n");
 		return DEFAULT_CURRENT;
@@ -1506,7 +1511,6 @@ static int bq24192_get_prop_batt_current_now(struct bq24192_chip *chip)
 		pr_err("failed to read qpnp_iadc\n");
 		return DEFAULT_CURRENT;
 	}
-
 	batt_current = result.result_ua;
 	last_batt_current = batt_current;
 	pr_info("battery_current= %d\n", batt_current);
@@ -1638,10 +1642,10 @@ static int bq24192_batt_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		/*                                                    
-                                                       
-                                                            
-                                                     
-   */
+		                                                     
+		                                                          
+		                                                   
+		 */
 		val->intval = 0;
 		break;
 	case POWER_SUPPLY_PROP_PSEUDO_BATT:
@@ -1744,10 +1748,10 @@ static int bq24192_batt_power_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_SYSTEM_TEMP_LEVEL:
 		/*                                                    
-                                                       
-                                                            
-                                                     
-   */
+		                                                     
+		                                                          
+		                                                   
+		 */
 		break;
 	default:
 		return -EINVAL;
@@ -2106,24 +2110,6 @@ DEVICE_ATTR(at_charge, 0644, at_chg_status_show, at_chg_status_store);
 DEVICE_ATTR(at_chcomp, 0644, at_chg_complete_show, at_chg_complete_store);
 DEVICE_ATTR(at_pmrst, 0640, at_pmic_reset_show, NULL);
 DEVICE_ATTR(at_otg, 0644, at_otg_status_show, at_otg_status_store);
-
-int pseudo_batt_set(struct pseudo_batt_info_type *info)
-{
-	struct bq24192_chip *chip = the_chip;
-	pr_err("pseudo_batt_set\n");
-	pseudo_batt_info.mode = info->mode;
-	pseudo_batt_info.id = info->id;
-	pseudo_batt_info.therm = info->therm;
-	pseudo_batt_info.temp = info->temp;
-	pseudo_batt_info.volt = info->volt;
-	pseudo_batt_info.capacity = info->capacity;
-	pseudo_batt_info.charging = info->charging;
-
-	power_supply_changed(&chip->batt_psy);
-
-	return 0;
-}
-EXPORT_SYMBOL(pseudo_batt_set);
 
 #ifdef CONFIG_LGE_CHARGER_TEMP_SCENARIO
 #ifdef CONFIG_LGE_THERMALE_CHG_CONTROL

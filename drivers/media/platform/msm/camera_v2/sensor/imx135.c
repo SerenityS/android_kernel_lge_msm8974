@@ -30,134 +30,91 @@ DEFINE_MSM_MUTEX(imx135_mut);
 static struct msm_sensor_ctrl_t imx135_s_ctrl;
 
 #if defined(CONFIG_MACH_LGE)
-/*             
-                                                               
-                               
-                                                                           
-                                
- */
-#if !(defined(CONFIG_MACH_MSM8974_G2_TMO_US) || defined(CONFIG_MACH_MSM8974_G2_VZW) || defined(CONFIG_MACH_MSM8974_G2_SPR) || defined(CONFIG_MACH_MSM8974_G2_DCM) || defined(CONFIG_MACH_MSM8974_G2_KDDI) || defined(CONFIG_MACH_MSM8974_G2_CA) || defined(CONFIG_MACH_MSM8974_Z_KR) || defined(CONFIG_MACH_MSM8974_Z_US) || defined(CONFIG_MACH_MSM8974_Z_KDDI) || defined(CONFIG_MACH_MSM8974_VU3_KR) || defined(CONFIG_MACH_MSM8974_G2_OPEN_COM) || defined(CONFIG_MACH_MSM8974_G2_OPT_AU)|| defined(CONFIG_MACH_MSM8974_G2_OPEN_AME) || defined(CONFIG_MACH_MSM8974_B1_KR) || defined(CONFIG_MACH_MSM8974_B1W))
-static struct msm_sensor_power_setting imx135_power_setting_rev_a[] = {
+static struct msm_sensor_power_setting imx135_power_setting_rev[] =
 	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VDIG,
-		.config_val = 0,
-		.delay = 0,
-	},
-	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VIO,
-		.config_val = 0,
-		.delay = 0,
-	},
-	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VAF,
-		.config_val = 0,
-		.delay = 0,
-	},
-	{										//VANA, GPIO 16
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_VANA,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VAF,
-		.config_val = 0,
-		.delay = 0,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_LOW,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 30,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_STANDBY,
-		.config_val = GPIO_OUT_LOW,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_STANDBY,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 30,
-	},
-	{
-		.seq_type = SENSOR_CLK,
-		.seq_val = SENSOR_CAM_MCLK,
-		.config_val = 24000000,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_I2C_MUX,
-		.seq_val = 0,
-		.config_val = 0,
-		.delay = 0,
-	},
-};
+		{  /* Set GPIO_RESET to low to disable power on reset*/
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_RESET,
+			.config_val = GPIO_OUT_LOW,
+			.delay = 1,
+		},
+#if defined(CONFIG_LG_OIS)
+		{	// OIS_RESET
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_OIS_RESET,
+			.config_val = GPIO_OUT_LOW,
+			.delay = 1,
+		},
 #endif
-
-static struct msm_sensor_power_setting imx135_power_setting_rev_b[] = {
-#if (defined(CONFIG_MACH_MSM8974_Z_KR) && defined(CONFIG_MACH_MSM8974_VU3_KR) && defined(CONFIG_MACH_MSM8974_G2_KDDI) && defined(CONFIG_MACH_MSM8974_Z_KDDI))
-	{  /* Set GPIO_RESET to low to disable power on reset*/
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_LOW,
-		.delay = 1,
-	},
-	{										//VDIG
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VDIG,
-		.config_val = 0,
-		.delay = 1,
-	},
-	{										//VANA, GPIO 16
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_VANA,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
-	},
-	{										//VIO, GPIO 96
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_VIO,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
-	},
-	{										//VCM, GPIO 57
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_VAF,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_CLK,
-		.seq_val = SENSOR_CAM_MCLK,
-		.config_val = 0,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_RESET,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
-	},
-	{
-		.seq_type = SENSOR_I2C_MUX,
-		.seq_val = 0,
-		.config_val = 0,
-		.delay = 0,
-	},
-#else
+		{										//VIO, GPIO 96
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_VIO,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 1,
+		},
+		{										//VDIG
+			.seq_type = SENSOR_VREG,
+			.seq_val = CAM_VDIG,
+			.config_val = 0,
+			.delay = 1,
+		},
+		{										//VANA, GPIO 16
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_VANA,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 2,
+		},
+#if defined(CONFIG_LG_PROXY)
+		{										//LDAF_EN, PMIC_GPIO 1
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_LDAF_EN,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 3,
+		},
+#endif
+		{										//VCM, GPIO 145
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_VAF,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 3,
+		},
+#if defined(CONFIG_LG_OIS)
+		{										//OIS_LDO_EN, GPIO 30
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_OIS_LDO_EN,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 1,
+		},
+#endif
+		{
+			.seq_type = SENSOR_CLK,
+			.seq_val = SENSOR_CAM_MCLK,
+			.config_val = 0,
+			.delay = 1,
+		},
+		{
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_RESET,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 1,
+		},
+#if defined(CONFIG_LG_OIS)
+		{
+			.seq_type = SENSOR_GPIO,
+			.seq_val = SENSOR_GPIO_OIS_RESET,
+			.config_val = GPIO_OUT_HIGH,
+			.delay = 1,
+		},
+#endif
+		{
+			.seq_type = SENSOR_I2C_MUX,
+			.seq_val = 0,
+			.config_val = 0,
+			.delay = 1,
+		},
+	};
+#if 0
+{
 	{  /* Set GPIO_RESET to low to disable power on reset*/
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_RESET,
@@ -168,18 +125,6 @@ static struct msm_sensor_power_setting imx135_power_setting_rev_b[] = {
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_OIS_RESET,
 		.config_val = GPIO_OUT_LOW,
-		.delay = 1,
-	},
-	{										//VDIG
-		.seq_type = SENSOR_VREG,
-		.seq_val = CAM_VDIG,
-		.config_val = 0,
-		.delay = 1,
-	},
-	{										//VANA, GPIO 16
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_VANA,
-		.config_val = GPIO_OUT_HIGH,
 		.delay = 1,
 	},
 	{										//OIS_LDO_EN, GPIO 145
@@ -192,12 +137,35 @@ static struct msm_sensor_power_setting imx135_power_setting_rev_b[] = {
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_VAF,
 		.config_val = GPIO_OUT_HIGH,
-		.delay = 3,
+		.delay = 1,
 	},
-
+	{										//VDIG
+		.seq_type = SENSOR_VREG,
+		.seq_val = CAM_VDIG,
+		.config_val = 0,
+		.delay = 0,
+	},
+	{										//VANA, GPIO 16
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_VANA,
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 0,
+	},
 	{										//VIO, GPIO 96
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_VIO,
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 2,
+	},
+	{										//AF_MVDD, GPIO 57
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_AF_MVDD,
+		.config_val = GPIO_OUT_HIGH,
+		.delay = 1,
+	},
+	{	// OIS_RESET
+		.seq_type = SENSOR_GPIO,
+		.seq_val = SENSOR_GPIO_OIS_RESET,
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 1,
 	},
@@ -213,27 +181,20 @@ static struct msm_sensor_power_setting imx135_power_setting_rev_b[] = {
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 1,
 	},
-	{	// OIS_RESET
-		.seq_type = SENSOR_GPIO,
-		.seq_val = SENSOR_GPIO_OIS_RESET,
-		.config_val = GPIO_OUT_HIGH,
-		.delay = 1,
-	},
 	{
 		.seq_type = SENSOR_I2C_MUX,
 		.seq_val = 0,
 		.config_val = 0,
 /*                                                                                                      */
-#if defined(CONFIG_MACH_MSM8974_B1_KR) || defined(CONFIG_MACH_MSM8974_B1W)
+#if defined(CONFIG_MACH_MSM8974_B1_KR)
 		.delay = 1,
 #else
 		.delay = 0,
 #endif
 /*                                                                                                    */
 	},
-#endif
 };
-/*                                                                            */
+#endif
 #endif //                            
 
 static struct v4l2_subdev_info imx135_subdev_info[] = {
@@ -307,44 +268,16 @@ static int __init imx135_init_module(void)
 	CDBG("%s E\n", __func__);
 
 #if defined(CONFIG_MACH_LGE)
-#if defined(CONFIG_MACH_MSM8974_G2_TMO_US) || defined(CONFIG_MACH_MSM8974_G2_VZW) || defined(CONFIG_MACH_MSM8974_G2_SPR) || defined(CONFIG_MACH_MSM8974_G2_DCM) || defined(CONFIG_MACH_MSM8974_G2_KDDI) || defined(CONFIG_MACH_MSM8974_G2_CA) || defined(CONFIG_MACH_MSM8974_Z_KR) || defined(CONFIG_MACH_MSM8974_Z_US) || defined(CONFIG_MACH_MSM8974_Z_KDDI) || defined(CONFIG_MACH_MSM8974_VU3_KR) || defined(CONFIG_MACH_MSM8974_G2_OPEN_COM) || defined(CONFIG_MACH_MSM8974_G2_OPT_AU) || defined(CONFIG_MACH_MSM8974_G2_OPEN_AME) || defined(CONFIG_MACH_MSM8974_B1_KR) || defined(CONFIG_MACH_MSM8974_B1W)
-/*             
-                                          
-                               
-                            
-                                
- */
 	switch(lge_get_board_revno()) {
 		case HW_REV_A:
-		default:
-			CDBG("%s: Sensor power is set as TMUS/VZW/SPR/DCM Rev.A\n", __func__);
-			imx135_s_ctrl.power_setting_array.power_setting = imx135_power_setting_rev_b;
-			imx135_s_ctrl.power_setting_array.size = ARRAY_SIZE(imx135_power_setting_rev_b);
-			break;
-	}
- //                                                     
-#else	/* only for LGU / AT&T */
-/*             
-                                                               
-                               
- */
-	switch(lge_get_board_revno()) {
-		case HW_REV_A:
-			CDBG("%s: Sensor power is set as Rev.A\n", __func__);
-			imx135_s_ctrl.power_setting_array.power_setting = imx135_power_setting_rev_a;
-			imx135_s_ctrl.power_setting_array.size = ARRAY_SIZE(imx135_power_setting_rev_a);
-			break;
 		case HW_REV_B:
 		default:
-			CDBG("%s: Sensor power is set as Rev.B\n", __func__);
-			imx135_s_ctrl.power_setting_array.power_setting = imx135_power_setting_rev_b;
-			imx135_s_ctrl.power_setting_array.size = ARRAY_SIZE(imx135_power_setting_rev_b);
+			CDBG("%s: Sensor power is set \n", __func__);
+			imx135_s_ctrl.power_setting_array.power_setting = imx135_power_setting_rev;
+			imx135_s_ctrl.power_setting_array.size = ARRAY_SIZE(imx135_power_setting_rev);
 			break;
 	}
-/*                                                                            */
-#endif //#if defined(CONFIG_MACH_MSM8974_G2_TMO_US) || defined(CONFIG_MACH_MSM8974_G2_VZW) || defined(CONFIG_MACH_MSM8974_G2_SPR)
 #endif //                            
-
 	rc = platform_driver_probe(&imx135_platform_driver,
 		imx135_platform_probe);
 	if (!rc) {

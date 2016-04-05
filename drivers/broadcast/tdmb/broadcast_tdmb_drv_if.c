@@ -192,7 +192,7 @@ static int broadcast_tdmb_get_ch_info(void __user *arg)
 
 	struct broadcast_tdmb_ch_info __user* puserdata = (struct broadcast_tdmb_ch_info __user*)arg;
 
-	if((puserdata == NULL)||( puserdata->ch_buf == NULL))
+	if((puserdata == NULL)||( puserdata->ch_buf_addr == 0))
 	{
 		printk("broadcast_tdmb_get_ch_info argument error\n");
 		return rc;
@@ -212,7 +212,7 @@ static int broadcast_tdmb_get_ch_info(void __user *arg)
 
 	if(rc == OK)
 	{
-		if(copy_to_user((void __user*)puserdata->ch_buf, (void*)fic_kernel_buffer, fic_len))
+		if(copy_to_user((void __user*)((unsigned int)puserdata->ch_buf_addr), (void*)fic_kernel_buffer, fic_len))
 		{
 			fic_len = 0;
 			rc = ERROR;
@@ -261,7 +261,7 @@ static int broadcast_tdmb_get_dmb_data(void __user *arg)
 			break;
 		}
 
-		if(copy_to_user((void __user*)(puserdata->data_buf + copied_buffer_size), (void*)read_buffer_ptr, read_buffer_size))
+		if(copy_to_user((void __user*)(((unsigned int)puserdata->data_buf_addr) + copied_buffer_size), (void*)read_buffer_ptr, read_buffer_size))
 		{
 			puserdata->copied_size= 0;
 			puserdata->packet_cnt = 0;

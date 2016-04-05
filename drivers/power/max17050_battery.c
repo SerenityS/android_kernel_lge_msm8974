@@ -838,7 +838,7 @@ int max17050_battery_exchange_program(void)
 {
 	int ret = 0;
 
-/*                                          */
+/*	                                         */
 	{
 		/*Call max17050_new_custom_model_write*/
 		ret = max17050_force_custom_model_write();

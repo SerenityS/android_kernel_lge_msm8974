@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,6 +23,7 @@
 #include "mdss_mdp.h"
 #include "mdss_mdp_rotator.h"
 #include "mdss_fb.h"
+#include "mdss_debug.h"
 
 #define MAX_ROTATOR_SESSIONS 8
 
@@ -200,7 +201,6 @@ static int mdss_mdp_rotator_pipe_dequeue(struct mdss_mdp_rotator_session *rot)
 	return 0;
 }
 
-
 /**
  * __mdss_mdp_rotator_to_pipe() - setup pipe according to rotator session params
  * @rot:	Pointer to rotator session
@@ -225,15 +225,9 @@ static int __mdss_mdp_rotator_to_pipe(struct mdss_mdp_rotator_session *rot,
 	pipe->params_changed++;
 	rot->params_changed = 0;
 
-	/*
-	 * Clear previous SMP reservations and reserve according
-	 * to the latest configuration
-	 */
-	mdss_mdp_smp_unreserve(pipe);
-
 	ret = mdss_mdp_smp_reserve(pipe);
 	if (ret) {
-		pr_err("unable to mdss_mdp_smp_reserve rot data\n");
+		pr_debug("unable to mdss_mdp_smp_reserve rot data\n");
 		return ret;
 	}
 
@@ -288,8 +282,9 @@ static int mdss_mdp_rotator_queue_sub(struct mdss_mdp_rotator_session *rot,
 		pr_err("unable to queue rot data\n");
 		goto error;
 	}
-
+	ATRACE_BEGIN("rotator_kickoff");
 	ret = mdss_mdp_rotator_kickoff(rot_ctl, rot, dst_data);
+	ATRACE_END("rotator_kickoff");
 
 	return ret;
 error:
@@ -302,11 +297,6 @@ static void mdss_mdp_rotator_commit_wq_handler(struct work_struct *work)
 {
 	struct mdss_mdp_rotator_session *rot;
 	int ret;
-
-	if (!work) {
-		pr_err("not a valid rot work struct\n");
-		return;
-	}
 
 	rot = container_of(work, struct mdss_mdp_rotator_session, commit_work);
 
@@ -654,7 +644,7 @@ static int mdss_mdp_rotator_finish(struct mdss_mdp_rotator_session *rot)
 
 	if (rot_pipe) {
 		struct mdss_mdp_mixer *mixer = rot_pipe->mixer;
-		mdss_mdp_pipe_unmap(rot_pipe);
+		mdss_mdp_pipe_destroy(rot_pipe);
 		tmp = mdss_mdp_ctl_mixer_switch(mixer->ctl,
 				MDSS_MDP_WB_CTL_TYPE_BLOCK);
 		if (!tmp)

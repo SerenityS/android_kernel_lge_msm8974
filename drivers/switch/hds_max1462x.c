@@ -70,11 +70,13 @@
 #define LGE_HSD_ERROR_PRINT
 
 #define HOOK_MIN		0
-#define HOOK_MAX		150000
-#define VUP_MIN			150000
+#define HOOK_MAX		120000
+#define ASSIST_MIN      120001
+#define ASSIST_MAX      180000
+#define VUP_MIN			180001
 #define VUP_MAX			400000
 #define VDOWN_MIN		400000
-#define VDOWN_MAX		600000
+#define VDOWN_MAX		650000
 
 /* TODO */
 /* 1. coding for additional excetion case in probe function */
@@ -106,8 +108,10 @@ struct ear_3button_info_table {
 };
 
 /* This table is only for J1 */
-static struct ear_3button_info_table max1462x_ear_3button_type_data[]={
+static struct ear_3button_info_table max1462x_ear_3button_type_data[] = {
 	{KEY_MEDIA, HOOK_MAX, HOOK_MIN, 0},
+    {582,ASSIST_MAX, ASSIST_MIN, 0},
+//    {KEY_ASSIST,ASSIST_MAX, ASSIST_MIN, 0},
 	{KEY_VOLUMEUP, VUP_MAX, VUP_MIN, 0},
 	{KEY_VOLUMEDOWN, VDOWN_MAX, VDOWN_MIN, 0}
 };
@@ -154,7 +158,6 @@ struct hsd_info {
 	struct work_struct work;
 	struct delayed_work work_for_key_pressed;
 	struct delayed_work work_for_key_released;
-	struct delayed_work work_for_key_released_remove;
 
 	unsigned char *pdev_name;
 };
@@ -169,21 +172,6 @@ enum {
 	FALSE = 0,
 	TRUE = 1,
 };
-
-static ssize_t lge_hsd_print_name(struct switch_dev *sdev, char *buf)
-{
-	switch (switch_get_state(sdev)) {
-		case NO_DEVICE:
-			return sprintf(buf, "No Device");
-		case LGE_HEADSET:
-			return sprintf(buf, "Headset");
-		case LGE_HEADSET_NO_MIC:
-			return sprintf(buf, "Headset");
-		default:
-			break;
-	}
-	return -EINVAL;
-}
 
 static ssize_t lge_hsd_print_state(struct switch_dev *sdev, char *buf)
 {
@@ -204,9 +192,10 @@ static void spmi_write(u8 value)
 		HSD_ERR("spmi_write: spmi_controller is NULL!\n");
 		return;
 	}
-	ret = spmi_ext_register_writel(ctrl, 0, addr, &write_buf,1);
-	spmi_ext_register_readl(ctrl, 0, addr,&read_buf,1);
-	HSD_DBG("addr:%x,write_buf:%x,read_buf:%x,ret:%d\n",addr, write_buf,read_buf,ret);
+	ret = spmi_ext_register_writel(ctrl, 0, addr, &write_buf, 1);
+	spmi_ext_register_readl(ctrl, 0, addr, &read_buf, 1);
+	HSD_DBG("addr:%x,write_buf:%x,read_buf:%x,ret:%d\n",
+					addr, write_buf, read_buf, ret);
 }
 
 static void button_pressed(struct work_struct *work)
@@ -219,26 +208,13 @@ static void button_pressed(struct work_struct *work)
 	struct ear_3button_info_table *table;
 	int table_size = ARRAY_SIZE(max1462x_ear_3button_type_data);
 
-	if (hi->gpio_get_value_func(hi->gpio_detect)||(atomic_read(&hi->is_3_pole_or_not)))
-	{
+	if (hi->gpio_get_value_func(hi->gpio_detect) || (atomic_read(&hi->is_3_pole_or_not))) {
 		HSD_ERR("button_pressed but 4 pole ear jack is plugged out already! just ignore the event.\n");
 		return;
 	}
 
-/* LIMIT: Include ONLY A1, B1, Vu3, Z models used MSM8974 AA/AB */
-#ifdef CONFIG_ADC_READY_CHECK_JB
 	rc = qpnp_vadc_read_lge(P_MUX6_1_1,&result);
-#else
-	/* MUST BE IMPLEMENT :
-	 * After MSM8974 AC and later version(PMIC combination change),
-	 * ADC AMUX of PMICs are separated in each dual PMIC.
-	 *
-	 * Ref.
-	 * qpnp-adc-voltage.c : *qpnp_get_vadc(), qpnp_vadc_read().
-	 * qpnp-charger.c     : new implementation by QCT.
-	 */
-	return;
-#endif
+
 	if (rc < 0) {
 		if (rc == -ETIMEDOUT) {
 			pr_err("[DEBUG] button_pressed : adc read timeout \n");
@@ -256,23 +232,28 @@ static void button_pressed(struct work_struct *work)
 		 */
 		if ((acc_read_value <= table->PERMISS_REANGE_MAX) &&
 				(acc_read_value >= table->PERMISS_REANGE_MIN)) {
-			HSD_DBG("button_pressed \n");
+			HSD_DBG("%s: button_pressed  and acc_read_value :%d \n ", __func__, acc_read_value);
 			atomic_set(&hi->btn_state, 1);
-			switch(table->ADC_HEADSET_BUTTON){
-				case  KEY_MEDIA :
-					input_report_key(hi->input, KEY_MEDIA, 1);
-					pr_info("%s: KEY_MEDIA \n", __func__);
-					break;
-				case KEY_VOLUMEUP :
-					input_report_key(hi->input, KEY_VOLUMEUP, 1);
-					pr_info("%s: KEY_VOLUMEUP \n", __func__);
-					break;
-				case KEY_VOLUMEDOWN :
-					input_report_key(hi->input, KEY_VOLUMEDOWN, 1);
-					pr_info("%s: KEY_VOLUMDOWN \n", __func__);
-					break;
-				default:
-					break;
+			switch (table->ADC_HEADSET_BUTTON) {
+			case  KEY_MEDIA:
+				input_report_key(hi->input, KEY_MEDIA, 1);
+				pr_info("%s: KEY_MEDIA \n", __func__);
+				break;
+			case KEY_VOLUMEUP:
+				input_report_key(hi->input, KEY_VOLUMEUP, 1);
+				pr_info("%s: KEY_VOLUMEUP \n", __func__);
+				break;
+			case KEY_VOLUMEDOWN:
+				input_report_key(hi->input, KEY_VOLUMEDOWN, 1);
+				pr_info("%s: KEY_VOLUMDOWN \n", __func__);
+				break;
+
+			case 582: //KEY_ASSIST
+				input_report_key(hi->input, 582, 1);
+				pr_info("%s: KEY_ASSIST \n", __func__);
+				break;
+			default:
+				break;
 			}
 			table->PRESS_OR_NOT = 1;
 			input_sync(hi->input);
@@ -290,9 +271,9 @@ static void button_released(struct work_struct *work)
 	int table_size = ARRAY_SIZE(max1462x_ear_3button_type_data);
 	int i;
 
-       // [AUDIO_BSP] 20130201, junday.lee, fix fake button_released return condition
-       if (hi->gpio_get_value_func(hi->gpio_detect) && !atomic_read(&hi->btn_state)){
-		HSD_ERR("button_released but ear jack is plugged out already! just ignore the event.\n");
+       if (hi->gpio_get_value_func(hi->gpio_detect) &&
+				!atomic_read(&hi->btn_state)) {
+		HSD_ERR("button_released but ear jack is plugged out already!just ignore the event.\n");
 		return;
 	}
 
@@ -301,56 +282,21 @@ static void button_released(struct work_struct *work)
 		table = &max1462x_ear_3button_type_data[i];
 		if (table->PRESS_OR_NOT) {
 			atomic_set(&hi->btn_state, 0);
-			switch(table->ADC_HEADSET_BUTTON){
-				case  KEY_MEDIA :
-					input_report_key(hi->input, KEY_MEDIA, 0);
-					break;
-				case KEY_VOLUMEUP :
-					input_report_key(hi->input, KEY_VOLUMEUP, 0);
-					break;
-				case KEY_VOLUMEDOWN :
-					input_report_key(hi->input, KEY_VOLUMEDOWN, 0);
-					break;
-				default:
-					break;
-			}
-			table->PRESS_OR_NOT = 0;
-			input_sync(hi->input);
-			break;
-		}
-	}
-}
-
-static void button_released_remove(struct work_struct *work)
-{
-	struct delayed_work *dwork = container_of(work, struct delayed_work, work);
-	struct hsd_info *hi = container_of(dwork, struct hsd_info, work_for_key_released_remove);
-	struct ear_3button_info_table *table;
-	int table_size = ARRAY_SIZE(max1462x_ear_3button_type_data);
-	int i;
-
-       if (!atomic_read(&hi->btn_state)){
-		HSD_ERR("it is not button pressed state. ignore button released\n");
-		return;
-	}
-
-	HSD_DBG("button_released \n");
-	for (i = 0; i < table_size; i++) {
-		table = &max1462x_ear_3button_type_data[i];
-		if (table->PRESS_OR_NOT) {
-			atomic_set(&hi->btn_state, 0);
-			switch(table->ADC_HEADSET_BUTTON){
-				case  KEY_MEDIA :
-					input_report_key(hi->input, KEY_MEDIA, 0);
-					break;
-				case KEY_VOLUMEUP :
-					input_report_key(hi->input, KEY_VOLUMEUP, 0);
-					break;
-				case KEY_VOLUMEDOWN :
-					input_report_key(hi->input, KEY_VOLUMEDOWN, 0);
-					break;
-				default:
-					break;
+			switch (table->ADC_HEADSET_BUTTON) {
+			case  KEY_MEDIA:
+				input_report_key(hi->input, KEY_MEDIA, 0);
+				break;
+			case KEY_VOLUMEUP:
+				input_report_key(hi->input, KEY_VOLUMEUP, 0);
+				break;
+			case KEY_VOLUMEDOWN:
+				input_report_key(hi->input, KEY_VOLUMEDOWN, 0);
+				break;
+			case 582://KEY_ASSIST
+				input_report_key(hi->input, 582, 0);
+				break;
+			default:
+				break;
 			}
 			table->PRESS_OR_NOT = 0;
 			input_sync(hi->input);
@@ -364,27 +310,16 @@ static void insert_headset(struct hsd_info *hi)
 	int earjack_type;
 
 	HSD_DBG("insert_headset\n");
-	if(atomic_read(&hi->isdetect))
-	{
+	if (atomic_read(&hi->isdetect)) {
 		HSD_DBG("duplicate irq\n");
 		return;
 	}
 
-	atomic_set(&hi->isdetect,TRUE);
+	atomic_set(&hi->isdetect, TRUE);
 	irq_set_irq_wake(hi->irq_key, 1);
 	gpio_direction_output(hi->gpio_mic_en, 1);
-#ifdef CONFIG_SWITCH_MAX1462X_WA
-	#if defined (CONFIG_MACH_MSM8974_G2_TMO_US) || defined (CONFIG_MACH_MSM8974_G2_SPR) || defined (CONFIG_MACH_MSM8974_G2_OPEN_COM) || defined(CONFIG_MACH_MSM8974_G2_OPT_AU) || defined (CONFIG_MACH_MSM8974_G2_CA)
-		msleep(600);
-		HSD_DBG("insert delay 600\n");
-	#else
-		msleep(500);
-		HSD_DBG("insert delay 500\n");
-	#endif
-#else
 	msleep(40);
 	HSD_DBG("insert delay 40\n");
-#endif
 	/* check if 3-pole or 4-pole
 	   1. read gpio_key
 	   2. check if 3-pole or 4-pole
@@ -394,7 +329,7 @@ static void insert_headset(struct hsd_info *hi)
 
 	earjack_type = hi->gpio_get_value_func(hi->gpio_key);
 
-	if ( earjack_type == 1 ) {
+	if (earjack_type == 1) {
 
 		HSD_DBG("4 polarity earjack\n");
 
@@ -436,9 +371,9 @@ static void remove_headset(struct hsd_info *hi)
 	int has_mic = switch_get_state(&hi->sdev);
 
 	HSD_DBG("remove_headset\n");
-	if(atomic_read(&hi->is_3_pole_or_not) == 1)
+	if (atomic_read(&hi->is_3_pole_or_not) == 1)
 		spmi_write(0x80);
-	if(atomic_read(&hi->is_3_pole_or_not) == 0)
+	if (atomic_read(&hi->is_3_pole_or_not) == 0)
 		gpio_direction_output(hi->gpio_mic_en, 0);
 
 	atomic_set(&hi->is_3_pole_or_not, 1);
@@ -456,9 +391,14 @@ static void remove_headset(struct hsd_info *hi)
 	}
 
 	if (atomic_read(&hi->btn_state))
-		schedule_delayed_work(&(hi->work_for_key_released_remove),
-				hi->latency_for_key );
-	atomic_set(&hi->isdetect,FALSE);
+#ifdef CONFIG_MAX1462X_USE_LOCAL_WORK_QUEUE
+		queue_delayed_work(local_max1462x_workqueue,
+				&(hi->work_for_key_released), hi->latency_for_key);
+#else
+	schedule_delayed_work(&(hi->work_for_key_released),
+			hi->latency_for_key);
+#endif
+	atomic_set(&hi->isdetect, FALSE);
 }
 
 static void detect_work(struct work_struct *work)
@@ -517,13 +457,14 @@ static irqreturn_t button_irq_handler(int irq, void *dev_id)
 
 	HSD_DBG("hi->gpio_get_value_func(hi->gpio_key) : %d\n", value);
 
-if(atomic_read(&hi->is_3_pole_or_not) == 0)
-{
-	if (value)
-		queue_delayed_work(local_max1462x_workqueue, &(hi->work_for_key_released), hi->latency_for_key );
-	else
-		queue_delayed_work(local_max1462x_workqueue, &(hi->work_for_key_pressed), hi->latency_for_key );
-}
+	if (atomic_read(&hi->is_3_pole_or_not) == 0) {
+		if (value)
+			queue_delayed_work(local_max1462x_workqueue,
+					&(hi->work_for_key_released), hi->latency_for_key);
+		else
+			queue_delayed_work(local_max1462x_workqueue,
+					&(hi->work_for_key_pressed), hi->latency_for_key);
+	}
 	return IRQ_HANDLED;
 }
 
@@ -538,42 +479,42 @@ static void max1462x_parse_dt(struct device *dev, struct max1462x_platform_data 
 	pdata->switch_name = "h2w";
 	pdata->keypad_name = "hs_detect";
 	pdata->gpio_get_value_func = gpio_get_value;
+	switch_vadc = qpnp_get_vadc(dev, "switch");
+
 }
 
 static int lge_hsd_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct max1462x_platform_data *pdata = pdev->dev.platform_data;
-
-
 	struct hsd_info *hi;
 
 	HSD_DBG("lge_hsd_probe\n");
 
 	hi = kzalloc(sizeof(struct hsd_info), GFP_KERNEL);
 
-	if ( hi == NULL) {
+	if (hi == NULL) {
 		HSD_ERR("Failed to allloate headset per device info\n");
 		return -ENOMEM;
 	}
 
-	if(pdev->dev.of_node){
-		pdata = devm_kzalloc(&pdev->dev,sizeof(struct max1462x_platform_data),GFP_KERNEL);
-		if(!pdata){
+	if (pdev->dev.of_node) {
+		pdata = devm_kzalloc(&pdev->dev, sizeof(struct max1462x_platform_data), GFP_KERNEL);
+		if (!pdata) {
 			HSD_ERR("Failed to allocate memory\n");
 			return -ENOMEM;
 		}
 		pdev->dev.platform_data = pdata;
 
-		max1462x_parse_dt(&pdev->dev,pdata);
+		max1462x_parse_dt(&pdev->dev, pdata);
 	} else {
-		pdata = devm_kzalloc(&pdev->dev,sizeof(struct max1462x_platform_data),GFP_KERNEL);
-		if(!pdata){
+		pdata = devm_kzalloc(&pdev->dev, sizeof(struct max1462x_platform_data), GFP_KERNEL);
+		if (!pdata) {
 			HSD_ERR("Failed to allocate memory\n");
 			return -ENOMEM;
-		}
-		else
+		} else {
 			pdata = pdev->dev.platform_data;
+		}
 	}
 	hi->key_code = pdata->key_code;
 
@@ -588,16 +529,11 @@ static int lge_hsd_probe(struct platform_device *pdev)
 	hi->gpio_key = pdata->gpio_key;
 	hi->gpio_set_value_func = pdata->gpio_set_value_func;
 	hi->gpio_get_value_func = pdata->gpio_get_value_func;
-#ifdef CONFIG_SWITCH_MAX1462X_WA
-	hi->latency_for_key = msecs_to_jiffies(80);
-#else
 	hi->latency_for_key = msecs_to_jiffies(50); /* convert milli to jiffies */
-#endif
 	mutex_init(&hi->mutex_lock);
 	INIT_WORK(&hi->work, detect_work);
 	INIT_DELAYED_WORK(&hi->work_for_key_pressed, button_pressed);
 	INIT_DELAYED_WORK(&hi->work_for_key_released, button_released);
-	INIT_DELAYED_WORK(&hi->work_for_key_released_remove, button_released_remove);
 
 	ret = gpio_request(hi->gpio_mic_en, "gpio_mic_en");
 	if (ret < 0) {
@@ -637,7 +573,6 @@ static int lge_hsd_probe(struct platform_device *pdev)
 		HSD_ERR("Failed to configure gpio%d (gpio_key) gpio_direction_input\n", hi->gpio_key);
 		goto error_04;
 	}
-
 
 	/* initialize irq of gpio_key */
 	hi->irq_key = gpio_to_irq(hi->gpio_key);
@@ -686,7 +621,6 @@ static int lge_hsd_probe(struct platform_device *pdev)
 	/* initialize switch device */
 	hi->sdev.name = pdata->switch_name;
 	hi->sdev.print_state = lge_hsd_print_state;
-	hi->sdev.print_name = lge_hsd_print_name;
 
 	ret = switch_dev_register(&hi->sdev);
 	if (ret < 0) {
@@ -708,44 +642,6 @@ static int lge_hsd_probe(struct platform_device *pdev)
 	hi->input->id.product   = 1;
 	hi->input->id.version   = 1;
 
-	/* headset tx noise */
-	{
-		struct qpnp_vadc_result result;
-		int acc_read_value = 0;
-		int i, rc = 0;
-		int count = 3;
-
-		for (i = 0; i < count; i++)
-		{
-/* LIMIT: Include ONLY A1, B1, Vu3, Z models used MSM8974 AA/AB */
-#ifdef CONFIG_ADC_READY_CHECK_JB
-			rc = qpnp_vadc_read_lge(P_MUX6_1_1,&result);
-#else
-			/* MUST BE IMPLEMENT :
-			 * After MSM8974 AC and later version(PMIC combination change),
-			 * ADC AMUX of PMICs are separated in each dual PMIC.
-			 *
-			 * Ref.
-			 * qpnp-adc-voltage.c : *qpnp_get_vadc(), qpnp_vadc_read().
-			 * qpnp-charger.c     : new implementation by QCT.
-			 */
-#endif
-			if (rc < 0)
-			{
-				if (rc == -ETIMEDOUT) {
-					pr_err("[DEBUG]adc read timeout \n");
-				} else {
-					pr_err("[DEBUG]adc read error - %d\n", rc);
-				}
-			}
-			else
-			{
-				acc_read_value = (int)result.physical;
-				pr_info("%s: acc_read_value - %d\n", __func__, (int)result.physical);
-				break;
-			}
-		}
-	}
 	set_bit(EV_SYN, hi->input->evbit);
 	set_bit(EV_KEY, hi->input->evbit);
 	set_bit(EV_SW, hi->input->evbit);
@@ -753,6 +649,7 @@ static int lge_hsd_probe(struct platform_device *pdev)
 	set_bit(SW_HEADPHONE_INSERT, hi->input->swbit);
 	set_bit(SW_MICROPHONE_INSERT, hi->input->swbit);
 	input_set_capability(hi->input, EV_KEY, KEY_MEDIA);
+	input_set_capability(hi->input, EV_KEY, 582);
 	input_set_capability(hi->input, EV_KEY, KEY_VOLUMEUP);
 	input_set_capability(hi->input, EV_KEY, KEY_VOLUMEDOWN);
 	ret = input_register_device(hi->input);
@@ -836,8 +733,8 @@ static int __init lge_hsd_init(void)
 	HSD_DBG("enter\n");
 
 #ifdef CONFIG_MAX1462X_USE_LOCAL_WORK_QUEUE
-	local_max1462x_workqueue = create_workqueue("max1462x") ;
-	if(!local_max1462x_workqueue)
+	local_max1462x_workqueue = create_workqueue("max1462x");
+	if (!local_max1462x_workqueue)
 		return -ENOMEM;
 #endif
 	HSD_DBG("wake_lock_init\n");
@@ -854,7 +751,7 @@ static int __init lge_hsd_init(void)
 static void __exit lge_hsd_exit(void)
 {
 #ifdef CONFIG_MAX1462X_USE_LOCAL_WORK_QUEUE
-	if(local_max1462x_workqueue)
+	if (local_max1462x_workqueue)
 		destroy_workqueue(local_max1462x_workqueue);
 	local_max1462x_workqueue = NULL;
 #endif
