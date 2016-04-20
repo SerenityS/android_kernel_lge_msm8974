@@ -19,6 +19,7 @@
 #include <linux/firmware.h>
 #include <linux/i2c.h>
 #include <linux/i2c/atmel_s540.h>
+#include <linux/input.h>
 #include <linux/input/mt.h>
 #include <linux/interrupt.h>
 #include <linux/slab.h>
@@ -2079,6 +2080,8 @@ static void mxt_proc_t24_messages(struct mxt_data *data, u8 *message)
 	int x;
 	int y;
 
+	struct input_dev *input_dev = data->input_dev;
+
 	if (data->in_bootloader)
 		return;
 
@@ -2119,6 +2122,10 @@ static void mxt_proc_t24_messages(struct mxt_data *data, u8 *message)
 		}
 		dev_info(dev, "Double_Tap!!     %d     %d \n",x,y);
 		send_uevent(knockon_event);
+        
+		input_report_key(input_dev, KEY_WAKEUP, 1);
+        input_report_key(input_dev, KEY_WAKEUP, 0);
+		input_sync(input_dev);
 	}
 }
 
@@ -3642,6 +3649,9 @@ static int mxt_initialize_t100_input_device(struct mxt_data *data)
 			     0, 255, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_ORIENTATION,
 			     0, 255, 0, 0);
+
+	set_bit(EV_KEY, input_dev->evbit);
+	set_bit(KEY_WAKEUP, input_dev->keybit);
 
 	input_set_drvdata(input_dev, data);
 
